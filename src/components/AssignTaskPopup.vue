@@ -2,31 +2,44 @@
   <div v-if="show" class="popup-overlay" @click="closePopup">
     <div class="popup-content" @click.stop>
       <div class="popup-header">
-        <h2>Assign Task</h2>
+        <h2>{{ task.title }}</h2>
         <button class="close-button" @click="closePopup">&times;</button>
       </div>
       
       <div class="popup-body">
         <div class="task-info">
-          <h3>{{ task.title }}</h3>
           <p>{{ task.description }}</p>
         </div>
 
         <div class="users-list">
-          <h3>Select User</h3>
+          <h3>Assign to</h3>
           <div v-if="loading" class="loading">Loading users...</div>
           <div v-else-if="error" class="error">{{ error }}</div>
-          <div v-else class="users-grid">
-            <div
-              v-for="user in users"
-              :key="user.id"
-              :class="['user-card', { selected: selectedUserId === user.id }]"
-              @click="selectUser(user.id)"
-            >
-              <h4>{{ user.fullName }}</h4>
-              <p class="email">{{ user.email }}</p>
-              <p class="task-count">{{ user.tasks ? user.tasks.length : 0 }} tasks</p>
-            </div>
+          <div v-else class="users-table-container">
+            <table class="users-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Tasks</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="user in users"
+                  :key="user.id"
+                  :class="{ 
+                    selected: selectedUserId === user.id,
+                    'current-assignee-row': task.assignedTo === user.id 
+                  }"
+                  @click="selectUser(user.id)"
+                >
+                  <td>{{ user.fullName }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>{{ user.tasks ? user.tasks.length : 0 }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -35,10 +48,10 @@
         <button class="cancel-button" @click="closePopup">Cancel</button>
         <button 
           class="assign-button" 
-          :disabled="!selectedUserId"
+          :disabled="!selectedUserId || selectedUserId === task.assignedTo"
           @click="assignTask"
         >
-          Assign Task
+          Assign
         </button>
       </div>
     </div>
@@ -77,6 +90,9 @@ const closePopup = () => {
 
 const assignTask = async () => {
   try {
+    if (selectedUserId.value === props.task.assignedTo) {
+      return;
+    }
     await api.post(`/task/${props.task.id}/assign`, {
       userId: selectedUserId.value
     });
@@ -143,54 +159,62 @@ const assignTask = async () => {
 }
 
 .task-info h3 {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 1.5rem 0;
   color: #2c3e50;
 }
 
 .users-list h3 {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   color: #2c3e50;
+  font-size: 0.875rem;
+  letter-spacing: 0.5px;
 }
 
-.users-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
+.users-table-container {
+  width: 100%;
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
-.user-card {
-  padding: 1rem;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.users-table th,
+.users-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.users-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.users-table tr {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
-.user-card:hover {
-  border-color: #2563eb;
+.users-table tr:hover {
   background-color: #f8f9fa;
 }
 
-.user-card.selected {
-  border-color: #2563eb;
+.users-table tr.selected {
   background-color: #ebf5ff;
 }
 
-.user-card h4 {
-  margin: 0 0 0.5rem 0;
-  color: #2c3e50;
-}
-
-.email {
-  color: #666;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-}
-
-.task-count {
+.users-table tr.selected td {
   color: #2563eb;
-  font-size: 0.875rem;
-  font-weight: 500;
 }
 
 .popup-footer {
@@ -233,5 +257,50 @@ const assignTask = async () => {
 
 .error {
   color: #dc3545;
+}
+
+.current-assignee {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.current-assignee .label {
+  font-weight: 500;
+  color: #666;
+  margin-right: 0.5rem;
+}
+
+.current-assignee .value {
+  color: #2c3e50;
+}
+
+.current-assignee .value.unassigned {
+  color: #dc3545;
+  font-style: italic;
+}
+
+.current-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background-color: #e9ecef;
+  color: #495057;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.current-assignee-row {
+  background-color: #f0fdf4;
+}
+
+.current-assignee-row:hover {
+  background-color: #dcfce7 !important;
+}
+
+.current-assignee-row td {
+  color: #16a34a;
 }
 </style> 

@@ -20,19 +20,39 @@
             class="task-card"
             draggable="true"
             @dragstart="onDragStart($event, task)"
+            @click="openAssignPopup(task)"
           >
             <div class="task-header">
               <div class="task-title">{{ task.title }}</div>
-              <button @click="deleteTask(task.id)" class="delete-btn">×</button>
+              <button @click.stop="deleteTask(task.id)" class="delete-btn">×</button>
             </div>
             <div class="task-description">{{ task.description }}</div>
             <div class="task-footer">
-              <span :class="['priority-badge', `priority-${task.priority.toLowerCase()}`]">{{ task.priority }}</span>
+              <span
+                v-if="task.priority !== 'Medium'"
+                :class="['priority-badge', `priority-${task.priority.toLowerCase()}`]"
+              >
+                {{ task.priority }}
+              </span>
+            </div>
+            <div v-if="assignee(task)" class="assignee">
+              Assignee: <b>{{ assignee(task) }}</b>
+            </div>
+            <div v-else class="assignee-placeholder">
+              Click to assign
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <AssignTaskPopup
+      v-if="selectedTask"
+      :show="showAssignPopup"
+      :task="selectedTask"
+      @close="closeAssignPopup"
+      @assigned="onTaskAssigned"
+    />
   </div>
 </template>
 
@@ -40,14 +60,20 @@
 import { onMounted, ref } from 'vue'
 import { useTaskStore } from '../stores/tasks'
 import { storeToRefs } from 'pinia'
+import AssignTaskPopup from '../components/AssignTaskPopup.vue'
 
 export default {
   name: 'Tasks',
+  components: {
+    AssignTaskPopup
+  },
   setup() {
     const taskStore = useTaskStore()
     const { tasks, loading } = storeToRefs(taskStore)
     const statuses = ['Pending', 'On Hold', 'In Progress', 'Completed']
     const isDragging = ref(false)
+    const showAssignPopup = ref(false)
+    const selectedTask = ref(null)
 
     const tasksByStatus = (status) => {
       return tasks.value.filter(task => task.status === status)
@@ -74,11 +100,30 @@ export default {
     }
 
     const deleteTask = async (taskId) => {
+      if (!confirm('Are you sure you want to delete this task?')) return
       await taskStore.deleteTask(taskId)
     }
 
     const onDragEnd = () => {
       isDragging.value = false
+    }
+
+    const assignee = ((task) => {
+      return task.assignedUser && task.assignedUser.fullName
+    })
+
+    const openAssignPopup = (task) => {
+      selectedTask.value = task
+      showAssignPopup.value = true
+    }
+
+    const closeAssignPopup = () => {
+      showAssignPopup.value = false
+      selectedTask.value = null
+    }
+
+    const onTaskAssigned = async () => {
+      await taskStore.fetchTasks()
     }
 
     onMounted(() => {
@@ -88,6 +133,7 @@ export default {
     return {
       tasks,
       loading,
+      assignee,
       statuses,
       tasksByStatus,
       deleteTask,
@@ -97,6 +143,11 @@ export default {
       onDragLeave,
       isDragging,
       onDragEnd,
+      showAssignPopup,
+      selectedTask,
+      openAssignPopup,
+      closeAssignPopup,
+      onTaskAssigned
     }
   }
 }
@@ -179,8 +230,8 @@ export default {
   padding: 12px;
   margin: 10px 0;
   box-shadow: 0 2px 4px rgba(9,30,66,0.08);
-  cursor: move;
   transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
 }
 
 .task-card:hover {
@@ -206,6 +257,12 @@ export default {
 
 .delete-btn:hover {
   color: #de350b;
+}
+
+.assignee {
+  font-size: 0.5rem;
+  color: #4e4e4e;
+  font-style: italic;
 }
 
 .task-title {
@@ -270,5 +327,12 @@ export default {
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
+}
+
+.assignee-placeholder {
+  color: #666;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  font-style: italic;
 }
 </style> 

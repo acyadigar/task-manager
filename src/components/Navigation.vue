@@ -16,6 +16,13 @@
         >
           Create
         </router-link>
+        <router-link 
+          to="/users"
+          class="nav-link"
+          :class="{ active: $route.path === '/users' }"
+        >
+          Users
+        </router-link>
       </div>
     </div>
     

@@ -1,28 +1,26 @@
 <template>
   <div class="home">
-    <h1>Welcome to Task Manager</h1>
-    <div v-if="user" class="welcome-message">
-      <p>Welcome back, {{ user.name }}!</p>
-      <router-link to="/tasks" class="tasks-link">
-        View Your Tasks
-      </router-link>
-    </div>
-    <div v-else class="auth-links">
-      Please login to view your tasks.
-    </div>
+    <span> Loading... </span>
+    <div class="spinner" />
   </div>
 </template>
 
 <script>
 import { useAuthStore } from '../stores/auth'
 import { storeToRefs } from 'pinia'
+import { watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 export default {
   name: 'Home',
   setup() {
     const authStore = useAuthStore()
-    const { user } = storeToRefs(authStore)
+    const { user, token } = storeToRefs(authStore)
+    const router = useRouter()
 
+    watch(token, (token) => {
+      if (token) router.push('/tasks')
+    }, { immediate: true })
     return {
       user
     }
@@ -34,6 +32,12 @@ export default {
 .home {
   text-align: center;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+  padding-top: 10rem;
 }
 
 .welcome-message {
@@ -50,7 +54,7 @@ export default {
 .auth-button, .tasks-link {
   display: inline-block;
   padding: 10px 20px;
-  background-color: #42b983;
+  background-color: #2563eb;
   color: white;
   text-decoration: none;
   border-radius: 4px;
@@ -58,6 +62,21 @@ export default {
 }
 
 .auth-button:hover, .tasks-link:hover {
-  background-color: #3aa876;
+  background-color: #2563eb;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid #ccc;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style> 
